@@ -1,24 +1,21 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-
-import LandingPage from './pages/LandingPage'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import Communities from './pages/Communities'
-import Members from './pages/Members'
-import MemberDetails from './pages/MemberDetails'
-import InviteMember from './pages/InviteMember'
-import Events from './pages/Events'
-import CreateEvent from './pages/CreateEvent'
-import EventDetails from './pages/EventDetails'
-import Announcements from './pages/Announcements'
-import CreateAnnouncement from './pages/CreateAnnouncement'
-import AnnouncementDetails from './pages/AnnouncementDetails'
-import CreateCommunity from './pages/CreateCommunity'
-import CommunityDetails from './pages/CommunityDetails'
-import Profile from './pages/Profile'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
+import LandingPage from "./Pages/landingpage";
+import Login from "./Pages/login";
+import Register from "./Pages/register";
+import Dashboard from "./Pages/dashboard";
+import Communities from "./Pages/communities";
+import CommunityDetails from "./Pages/communitydetails";
+import MemberDetails from "./Pages/memberdetails";
+import InviteMember from "./Pages/invitemember";
+import Events from "./Pages/events";
+import CreateEvent from "./Pages/createEvent";
+import EventDetails from "./Pages/eventdetails";
+import Announcements from "./Pages/announcements";
+import CreateAnnouncement from "./Pages/createannouncement";
+import AnnouncementDetails from "./Pages/announcementdetails";
+import CreateCommunity from "./Pages/createcommunity";
+import Profile from "./Pages/profile";
+import ForgotPassword from "./Pages/forgotpassword";
+import ResetPassword from "./Pages/resetpassword";
 
 import ProtectedRoute from './ProtectedRoute'
 
