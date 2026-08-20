@@ -1,10 +1,15 @@
+import { supabase } from '../lib/supabaseClient'
+
 function Logout() {
-  const handleLogout = () => {
-    // Remove active login session
+  const handleLogout = async () => {
+    // 1. Logout from Supabase
+    await supabase.auth.signOut()
+    
+    // 2. Clear any old localStorage stuff
     localStorage.removeItem('currentUser')
     localStorage.removeItem('rememberMe')
 
-    // Go to login with a full page reload
+    // 3. Go to login
     window.location.replace('/login')
   }
 

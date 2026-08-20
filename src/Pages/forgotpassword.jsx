@@ -1,43 +1,76 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
 import '../App.css'
 
 function ForgotPassword() {
-  const navigate = useNavigate()
-
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // DEBUG: Confirm this file is running
+    console.log('🔥 FORGOT PASSWORD FILE IS RUNNING')
 
     setMessage('')
     setError('')
+    setLoading(true)
 
-    const savedUser = JSON.parse(
-      localStorage.getItem('communityUser')
-    )
+    try {
+      const redirectUrl =
+        `${window.location.origin}/reset-password`
 
-    if (!savedUser) {
-      setError('No account has been registered yet.')
-      return
+      console.log('📧 RESET PASSWORD EMAIL:', email.trim())
+      console.log('🔗 RESET REDIRECT URL:', redirectUrl)
+
+      const { data, error } =
+        await supabase.auth.resetPasswordForEmail(
+          email.trim(),
+          {
+            redirectTo: redirectUrl,
+          }
+        )
+
+      console.log('📦 RESET PASSWORD RESPONSE:', {
+        data,
+        error,
+      })
+
+      if (error) {
+        console.error(
+          '❌ Password reset error:',
+          error
+        )
+
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      console.log(
+        '✅ Password reset email request completed successfully'
+      )
+
+      setMessage(
+        'Password reset email sent! Please check your email and click the reset link.'
+      )
+
+      setLoading(false)
+    } catch (err) {
+      console.error(
+        '❌ Unexpected error:',
+        err
+      )
+
+      setError(
+        'Something went wrong. Please try again.'
+      )
+
+      setLoading(false)
     }
-
-    if (
-      email.toLowerCase() !== savedUser.email.toLowerCase()
-    ) {
-      setError('No account was found with this email address.')
-      return
-    }
-
-    setMessage(
-      'Email verified. You can now reset your password.'
-    )
-
-    setTimeout(() => {
-      navigate('/reset-password')
-    }, 1000)
   }
 
   return (
@@ -134,6 +167,7 @@ function ForgotPassword() {
 
             </div>
 
+            {/* Error message */}
             {error && (
               <p
                 style={{
@@ -146,6 +180,7 @@ function ForgotPassword() {
               </p>
             )}
 
+            {/* Success message */}
             {message && (
               <p
                 style={{
@@ -161,8 +196,11 @@ function ForgotPassword() {
             <button
               type="submit"
               className="primary-btn auth-submit"
+              disabled={loading}
             >
-              Continue →
+              {loading
+                ? 'Sending...'
+                : 'Continue →'}
             </button>
 
           </form>
@@ -173,7 +211,7 @@ function ForgotPassword() {
 
           <p className="auth-register">
 
-            Remember your password?
+            Remember your password?{' '}
 
             <Link to="/login">
               Sign in

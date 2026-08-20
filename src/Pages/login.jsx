@@ -1,244 +1,140 @@
-import { useState } from 'react'
+import { useState } from 'react' 
 import { Link, useNavigate } from 'react-router-dom'
+import { supabase } from "../lib/supabaseClient";
 import communityImage from './images/community.png'
 import '../App.css'
 
 function Login() {
   const navigate = useNavigate()
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  // REMOVED THE NUKE useEffect - it was logging you out every refresh
 
-    setError('')
-
-    const savedUser = JSON.parse(
-      localStorage.getItem('communityUser')
-    )
-
-    if (!savedUser) {
-      setError('No account found. Please create an account first.')
+  const handleForgotPassword = async () => {
+    if (!email) {
+      alert('Please enter your email first in the email field')
       return
     }
-
-    if (
-      email.toLowerCase() !== savedUser.email.toLowerCase() ||
-      password !== savedUser.password
-    ) {
-      setError('Incorrect email or password.')
-      return
-    }
-
-    localStorage.setItem(
-      'currentUser',
-      JSON.stringify(savedUser)
-    )
-
-    if (remember) {
-      localStorage.setItem('rememberMe', 'true')
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'http://localhost:5173/reset-password',
+    })
+    if (error) {
+      alert('Error: ' + error.message)
     } else {
-      localStorage.removeItem('rememberMe')
+      alert('Password reset link sent! Check your email inbox.')
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    })
+
+    setLoading(false)
+
+    if (error) {
+      setError(error.message)
+      return
     }
 
-    alert('Login successful!')
-
-    navigate('/dashboard')
+    if (data.user) {
+      alert('Login successful!')
+      navigate('/communities')
+    }
   }
 
   return (
     <div className="auth-page">
-
-      {/* LEFT SIDE */}
       <div className="auth-brand">
-
         <Link to="/" className="auth-logo">
           <div className="brand-icon">C</div>
           <span>Community Connect</span>
         </Link>
-
         <div className="auth-message">
-
-          <div className="auth-symbol">
-            🤝
-          </div>
-
-          <h1>
-            Welcome back to
-            <span> Community Connect</span>
-          </h1>
-
-          <p>
-            Stay connected with your community, discover events,
-            receive announcements and participate in meaningful activities.
-          </p>
-
+          <div className="auth-symbol">🤝</div>
+          <h1>Welcome back to<span> Community Connect</span></h1>
+          <p>Stay connected with your community, discover events, receive announcements and participate in meaningful activities.</p>
           <div className="auth-points">
-
-            <div>
-              <span>✓</span>
-              Connect with your community
-            </div>
-
-            <div>
-              <span>✓</span>
-              Discover upcoming events
-            </div>
-
-            <div>
-              <span>✓</span>
-              Stay informed with announcements
-            </div>
-
+            <div><span>✓</span>Connect with your community</div>
+            <div><span>✓</span>Discover upcoming events</div>
+            <div><span>✓</span>Stay informed with announcements</div>
           </div>
-
         </div>
-
-        {/* IMAGE AT THE VERY BOTTOM */}
         <div className="auth-image-wrapper">
-          <img
-            src={communityImage}
-            alt="Community Connect"
-            className="auth-community-image"
-          />
+          <img src={communityImage} alt="Community Connect" className="auth-community-image" />
         </div>
-
       </div>
 
-
-      {/* RIGHT SIDE */}
       <div className="auth-form-container">
-
         <div className="auth-form">
-
-          <Link to="/" className="mobile-back">
-            ← Back to home
-          </Link>
-
+          <Link to="/" className="mobile-back">← Back to home</Link>
           <div className="form-heading">
-
-            <h2>
-              Welcome back 👋
-            </h2>
-
-            <p>
-              Sign in to your Community Connect account.
-            </p>
-
+            <h2>Welcome back 👋</h2>
+            <p>Sign in to your Community Connect account.</p>
           </div>
 
           <form onSubmit={handleSubmit}>
-
             <div className="form-group">
-
-              <label htmlFor="email">
-                Email address
-              </label>
-
+              <label htmlFor="email">Email address</label>
               <input
                 id="email"
                 type="email"
                 placeholder="Enter your email"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value)
-                  setError('')
-                }}
+                onChange={(e) => { setEmail(e.target.value); setError('') }}
                 required
               />
-
             </div>
 
-
             <div className="form-group">
-
               <div className="password-label">
-
-                <label htmlFor="password">
-                  Password
-                </label>
-
-                <Link to="/forgot-password">
+                <label htmlFor="password">Password</label>
+                <button 
+                  type="button" 
+                  onClick={handleForgotPassword}
+                  style={{background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '14px', fontWeight: '500'}}
+                >
                   Forgot password?
-                </Link>
-
+                </button>
               </div>
-
               <input
                 id="password"
                 type="password"
                 placeholder="Enter your password"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  setError('')
-                }}
+                onChange={(e) => { setPassword(e.target.value); setError('') }}
                 required
               />
-
             </div>
 
-
             <label className="remember">
-
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-
-              <span>
-                Remember me
-              </span>
-
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span>Remember me</span>
             </label>
 
+            {error && <p style={{ color: '#d93025', marginTop: '10px', marginBottom: '10px' }}>{error}</p>}
 
-            {error && (
-              <p
-                style={{
-                  color: '#d93025',
-                  marginTop: '10px',
-                  marginBottom: '10px',
-                }}
-              >
-                {error}
-              </p>
-            )}
-
-
-            <button
-              type="submit"
-              className="primary-btn auth-submit"
-            >
-              Sign In →
+            <button type="submit" className="primary-btn auth-submit" disabled={loading}>
+              {loading ? 'Signing In...' : 'Sign In →'}
             </button>
-
           </form>
 
-
-          <div className="auth-divider">
-            <span>OR</span>
-          </div>
-
-
+          <div className="auth-divider"><span>OR</span></div>
           <p className="auth-register">
-
             Don't have an account?
-
-            <Link to="/register">
-              Create an account
-            </Link>
-
+            <Link to="/register">Create an account</Link>
           </p>
-
         </div>
-
       </div>
-
     </div>
   )
 }

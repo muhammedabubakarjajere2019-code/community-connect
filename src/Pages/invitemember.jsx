@@ -1,300 +1,77 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import '../App.css'
+import { useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
 
 function InviteMember() {
+  const { id: communityId } = useParams()
   const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
 
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    community: 'General Community',
-  })
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
-
-  const handleSubmit = (e) => {
+  const handleInvite = async (e) => {
     e.preventDefault()
+    setLoading(true)
+    setMessage('')
 
-    if (!formData.name.trim() || !formData.email.trim()) {
-      alert('Please enter the member name and email.')
+    // Step 1: Find user by email
+    const { data: profile, error: findError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .single()
+
+    if (findError || !profile) {
+      setMessage("User not found. They need to sign up first.")
+      setLoading(false)
       return
     }
 
-    const existingMembers =
-      JSON.parse(localStorage.getItem('invitedMembers')) || []
+    // Step 2: Add them to community_members
+    const { error: insertError } = await supabase
+    .from('community_members')
+    .insert({ community_id: communityId, user_id: profile.id })
 
-    const selectedCommunity = formData.community
-
-    let memberType = 'General'
-
-    if (
-      selectedCommunity === 'Muslim Youth Community' ||
-      selectedCommunity === 'Muslim Women Development'
-    ) {
-      memberType = 'Muslim'
-    } else if (
-      selectedCommunity === 'Christian Youth Community' ||
-      selectedCommunity === 'Christian Family Community'
-    ) {
-      memberType = 'Christian'
+    if (insertError) {
+      if (insertError.code === '23505') {
+        setMessage("This user is already a member")
+      } else {
+        setMessage(insertError.message)
+      }
+    } else {
+      setMessage("Member added successfully!")
+      setEmail('')
+      setTimeout(() => navigate(`/communities/${communityId}/members`), 1500)
     }
-
-    const newMember = {
-      id: Date.now(),
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      community: selectedCommunity,
-      type: memberType,
-      joined: new Date().toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      }),
-      status: 'Active',
-    }
-
-    localStorage.setItem(
-      'invitedMembers',
-      JSON.stringify([
-        ...existingMembers,
-        newMember,
-      ])
-    )
-
-    alert('Member invited successfully!')
-
-    navigate('/members')
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('currentUser')
-    localStorage.removeItem('rememberMe')
-
-    navigate('/login')
+    
+    setLoading(false)
   }
 
   return (
-    <div className="dashboard">
+    <div className="dashboard-main" style={{padding: '20px', maxWidth: '500px'}}>
+      <h1>Invite Member</h1>
+      <p>Invite someone to Community {communityId} by their email</p>
 
-      {/* SIDEBAR */}
-
-      <aside className="dashboard-sidebar">
-
-        <Link
-          to="/"
-          className="dashboard-logo"
+      <form onSubmit={handleInvite} style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px'}}>
+        <input 
+          type="email" 
+          placeholder="Enter email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{padding: '10px', borderRadius: '6px', border: '1px solid #ddd'}}
+        />
+        <button 
+          type="submit" 
+          disabled={loading}
+          style={{background: '#007bff', color: 'white', padding: '10px', border: 'none', borderRadius: '6px', cursor: 'pointer'}}
         >
-          <div className="brand-icon">
-            C
-          </div>
+          {loading ? 'Inviting...' : 'Send Invite'}
+        </button>
+      </form>
 
-          <span>
-            Community Connect
-          </span>
-        </Link>
-
-
-        <nav className="dashboard-nav">
-
-          <Link to="/dashboard">
-            <span>🏠</span>
-            Dashboard
-          </Link>
-
-          <Link to="/communities">
-            <span>🏘️</span>
-            Communities
-          </Link>
-
-          <Link
-            to="/members"
-            className="active"
-          >
-            <span>👥</span>
-            Members
-          </Link>
-
-          <Link to="/events">
-            <span>📅</span>
-            Events
-          </Link>
-
-          <Link to="/announcements">
-            <span>📢</span>
-            Announcements
-          </Link>
-
-        </nav>
-
-
-        <div className="dashboard-bottom">
-
-          <Link to="/profile">
-            <span>👤</span>
-            Profile
-          </Link>
-
-          {/* REAL LOGOUT */}
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="dashboard-logout-btn"
-          >
-            <span>🚪</span>
-            Logout
-          </button>
-
-        </div>
-
-      </aside>
-
-
-      {/* MAIN CONTENT */}
-
-      <main className="dashboard-main">
-
-        <Link
-          to="/members"
-          className="back-link"
-        >
-          ← Back to Members
-        </Link>
-
-
-        <header className="page-header">
-
-          <div>
-
-            <p className="dashboard-label">
-              COMMUNITY CONNECT
-            </p>
-
-            <h1>
-              Invite a Member
-            </h1>
-
-            <p>
-              Invite someone to join one of
-              your communities.
-            </p>
-
-          </div>
-
-        </header>
-
-
-        {/* INVITE FORM */}
-
-        <section className="create-form-card">
-
-          <form onSubmit={handleSubmit}>
-
-            <div className="form-group">
-
-              <label>
-                Full Name
-              </label>
-
-              <input
-                type="text"
-                name="name"
-                placeholder="Enter member name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-
-            </div>
-
-
-            <div className="form-group">
-
-              <label>
-                Email Address
-              </label>
-
-              <input
-                type="email"
-                name="email"
-                placeholder="Enter email address"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-
-            </div>
-
-
-            <div className="form-group">
-
-              <label>
-                Community
-              </label>
-
-              <select
-                name="community"
-                value={formData.community}
-                onChange={handleChange}
-              >
-
-                <option value="General Community">
-                  General Community
-                </option>
-
-                <option value="Muslim Youth Community">
-                  Muslim Youth Community
-                </option>
-
-                <option value="Muslim Women Development">
-                  Muslim Women Development
-                </option>
-
-                <option value="Christian Youth Community">
-                  Christian Youth Community
-                </option>
-
-                <option value="Christian Family Community">
-                  Christian Family Community
-                </option>
-
-              </select>
-
-            </div>
-
-
-            <div className="form-actions">
-
-              <Link
-                to="/members"
-                className="cancel-btn"
-              >
-                Cancel
-              </Link>
-
-              <button
-                type="submit"
-                className="create-community-btn"
-              >
-                Send Invitation
-              </button>
-
-            </div>
-
-          </form>
-
-        </section>
-
-      </main>
-
+      {message && <p style={{marginTop: '15px', color: message.includes('success') ? 'green' : 'red'}}>{message}</p>}
     </div>
   )
 }
-
 export default InviteMember

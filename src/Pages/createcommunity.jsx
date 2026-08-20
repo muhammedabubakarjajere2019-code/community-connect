@@ -1,362 +1,70 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import Logout from '../components/Logout'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { supabase } from "../lib/supabaseClient"
 import '../App.css'
 
 function CreateCommunity() {
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState(null)
+  
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [location, setLocation] = useState('')
+  const [type, setType] = useState('General') // FIX
 
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'General',
-    description: '',
-    location: '',
-  })
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user))
+  }, [])
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-
-    const newCommunity = {
-      id: Date.now(),
-      type: formData.type,
-      icon:
-        formData.type === 'Muslim'
-          ? '🕌'
-          : formData.type === 'Christian'
-            ? '⛪'
-            : '🤝',
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      location: formData.location.trim(),
-      members: 1,
-    }
-
-    const existingCommunities =
-      JSON.parse(localStorage.getItem('communities')) || []
-
-    const updatedCommunities = [
-      ...existingCommunities,
-      newCommunity,
-    ]
-
-    localStorage.setItem(
-      'communities',
-      JSON.stringify(updatedCommunities)
-    )
-
+    setLoading(true)
+    
+    const { error } = await supabase.from('communities').insert([{
+      name, description, location, type, created_by: user.id
+    }])
+    
+    if(error) { alert(error.message); setLoading(false); return }
+    
+    alert("Community Created!")
     navigate('/communities')
   }
 
   return (
     <div className="dashboard">
-
-      {/* SIDEBAR */}
-
       <aside className="dashboard-sidebar">
-
-        <Link
-          to="/"
-          className="dashboard-logo"
-        >
-          <div className="brand-icon">
-            C
-          </div>
-
-          <span>
-            Community Connect
-          </span>
-        </Link>
-
-
+        <Link to="/" className="dashboard-logo"><div className="brand-icon">C</div><span>Community Connect</span></Link>
         <nav className="dashboard-nav">
-
-          <Link to="/dashboard">
-            <span>🏠</span>
-            Dashboard
-          </Link>
-
-          <Link
-            to="/communities"
-            className="active"
-          >
-            <span>🏘️</span>
-            Communities
-          </Link>
-
-          <Link to="/members">
-            <span>👥</span>
-            Members
-          </Link>
-
-          <Link to="/events">
-            <span>📅</span>
-            Events
-          </Link>
-
-          <Link to="/announcements">
-            <span>📢</span>
-            Announcements
-          </Link>
-
+          <Link to="/dashboard"><span>🏠</span>Dashboard</Link>
+          <Link to="/communities" className="active"><span>🏘️</span>Communities</Link>
+          <Link to="/members"><span>👥</span>Members</Link>
+          <Link to="/events"><span>📅</span>Events</Link>
+          <Link to="/announcements"><span>📢</span>Announcements</Link>
         </nav>
-
-
-        <div className="dashboard-bottom">
-
-          <Link to="/profile">
-            <span>👤</span>
-            Profile
-          </Link>
-
-          {/* REAL LOGOUT */}
-
-          <Logout />
-
-        </div>
-
       </aside>
 
-
-      {/* MAIN CONTENT */}
-
       <main className="dashboard-main">
-
-        <div className="form-back">
-
-          <Link to="/communities">
-            ← Back to Communities
-          </Link>
-
-        </div>
-
-
         <header className="page-header">
-
-          <div>
-
-            <p className="dashboard-label">
-              COMMUNITY CONNECT
-            </p>
-
-            <h1>
-              Create a Community
-            </h1>
-
-            <p>
-              Create a welcoming space where people can connect,
-              participate and grow together.
-            </p>
-
-          </div>
-
+          <div><p className="dashboard-label">COMMUNITY CONNECT</p><h1>Create Community</h1></div>
         </header>
 
-
-        <div className="community-form-layout">
-
-          {/* FORM */}
-
-          <section className="community-form-card">
-
-            <h2>
-              Community Information
-            </h2>
-
-            <p className="form-description">
-              Tell people about the community you want to create.
-            </p>
-
-
-            <form onSubmit={handleSubmit}>
-
-              {/* COMMUNITY NAME */}
-
-              <div className="form-group">
-
-                <label htmlFor="name">
-                  Community Name
-                </label>
-
-                <input
-                  id="name"
-                  type="text"
-                  name="name"
-                  placeholder="e.g. Youth Development Community"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-
-              </div>
-
-
-              {/* COMMUNITY TYPE */}
-
-              <div className="form-group">
-
-                <label htmlFor="type">
-                  Community Type
-                </label>
-
-                <select
-                  id="type"
-                  name="type"
-                  value={formData.type}
-                  onChange={handleChange}
-                >
-
-                  <option value="General">
-                    🤝 General Community
-                  </option>
-
-                  <option value="Muslim">
-                    🕌 Muslim Community
-                  </option>
-
-                  <option value="Christian">
-                    ⛪ Christian Community
-                  </option>
-
-                </select>
-
-              </div>
-
-
-              {/* DESCRIPTION */}
-
-              <div className="form-group">
-
-                <label htmlFor="description">
-                  Description
-                </label>
-
-                <textarea
-                  id="description"
-                  name="description"
-                  placeholder="Describe the purpose of your community..."
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows="5"
-                  required
-                />
-
-              </div>
-
-
-              {/* LOCATION */}
-
-              <div className="form-group">
-
-                <label htmlFor="location">
-                  Location
-                </label>
-
-                <input
-                  id="location"
-                  type="text"
-                  name="location"
-                  placeholder="e.g. Potiskum, Yobe State"
-                  value={formData.location}
-                  onChange={handleChange}
-                  required
-                />
-
-              </div>
-
-
-              {/* BUTTONS */}
-
-              <div className="form-actions">
-
-                <Link
-                  to="/communities"
-                  className="cancel-form-btn"
-                >
-                  Cancel
-                </Link>
-
-                <button
-                  type="submit"
-                  className="submit-community-btn"
-                >
-                  Create Community →
-                </button>
-
-              </div>
-
-            </form>
-
-          </section>
-
-
-          {/* PREVIEW */}
-
-          <aside className="community-preview">
-
-            <p className="preview-label">
-              PREVIEW
-            </p>
-
-
-            <div className="preview-icon">
-
-              {formData.type === 'Muslim'
-                ? '🕌'
-                : formData.type === 'Christian'
-                  ? '⛪'
-                  : '🤝'}
-
-            </div>
-
-
-            <h2>
-              {formData.name || 'Your Community Name'}
-            </h2>
-
-
-            <span className="preview-type">
-              {formData.type} Community
-            </span>
-
-
-            <p>
-              {formData.description ||
-                'Your community description will appear here.'}
-            </p>
-
-
-            <div className="preview-location">
-              📍 {formData.location || 'Community location'}
-            </div>
-
-
-            <div className="preview-message">
-
-              <strong>
-                Connect. Participate. Grow Together.
-              </strong>
-
-              <span>
-                A welcoming space for everyone.
-              </span>
-
-            </div>
-
-          </aside>
-
-        </div>
-
+        <form onSubmit={handleSubmit} className="create-form" style={{maxWidth:600}}>
+          <div className="form-group"><label>Community name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} required /></div>
+          <div className="form-group">
+            <label>Category</label>
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              <option>General</option><option>Muslim</option><option>Christian</option>
+            </select>
+          </div>
+          <div className="form-group"><label>Location</label><input type="text" value={location} onChange={(e) => setLocation(e.target.value)} /></div>
+          <div className="form-group"><label>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="4" required/></div>
+          <button type="submit" disabled={loading} className="create-community-btn">
+            {loading ? 'Creating...' : 'Create Community'}
+          </button>
+        </form>
       </main>
-
     </div>
   )
 }
-
 export default CreateCommunity

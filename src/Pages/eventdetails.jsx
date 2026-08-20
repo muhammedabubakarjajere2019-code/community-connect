@@ -1,521 +1,163 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import Logout from '../components/Logout'
+import { Link, useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
 import '../App.css'
 
 function EventDetails() {
   const { id } = useParams()
-
+  const navigate = useNavigate()
   const [event, setEvent] = useState(null)
-  const [joined, setJoined] = useState(false)
-
-  const defaultEvents = [
-    {
-      id: 1,
-      date: '2026-08-20',
-      title: 'Community Development Meeting',
-      description:
-        'Discuss community development plans and upcoming activities.',
-      time: '4:00 PM',
-      location: 'Community Center',
-      type: 'General',
-      status: 'Upcoming',
-    },
-    {
-      id: 2,
-      date: '2026-08-24',
-      title: 'Youth Development Event',
-      description:
-        'A youth-focused program for learning, skills and development.',
-      time: '10:00 AM',
-      location: 'Main Hall',
-      type: 'General',
-      status: 'Upcoming',
-    },
-    {
-      id: 3,
-      date: '2026-08-28',
-      title: 'Muslim Youth Gathering',
-      description:
-        'An opportunity for Muslim youth to connect and participate.',
-      time: '3:00 PM',
-      location: 'Community Hall',
-      type: 'Muslim',
-      status: 'Upcoming',
-    },
-    {
-      id: 4,
-      date: '2026-09-02',
-      title: 'Christian Youth Meeting',
-      description:
-        'Youth fellowship, discussion and community activities.',
-      time: '5:00 PM',
-      location: 'Church Hall',
-      type: 'Christian',
-      status: 'Upcoming',
-    },
-    {
-      id: 5,
-      date: '2026-09-06',
-      title: 'Community Clean-up',
-      description:
-        'Working together to keep our community clean and healthy.',
-      time: '8:00 AM',
-      location: 'Community Center',
-      type: 'General',
-      status: 'Upcoming',
-    },
-    {
-      id: 6,
-      date: '2026-09-10',
-      title: 'Community Skills Workshop',
-      description:
-        'Learn practical skills and discover new opportunities.',
-      time: '11:00 AM',
-      location: 'Training Hall',
-      type: 'General',
-      status: 'Upcoming',
-    },
-  ]
+  const [user, setUser] = useState(null)
+  const [comments, setComments] = useState([])
+  const [newComment, setNewComment] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const savedEvents =
-      JSON.parse(localStorage.getItem('events')) || []
-
-    const allEvents = [
-      ...defaultEvents,
-      ...savedEvents,
-    ]
-
-    const selectedEvent = allEvents.find(
-      (item) =>
-        String(item.id) === String(id)
-    )
-
-    setEvent(selectedEvent || null)
-
-    const savedJoinedEvents =
-      JSON.parse(
-        localStorage.getItem('joinedEvents')
-      ) || []
-
-    const alreadyJoined =
-      savedJoinedEvents.some(
-        (eventId) =>
-          String(eventId) === String(id)
-      )
-
-    setJoined(alreadyJoined)
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user))
+    fetchEvent()
+    fetchComments()
   }, [id])
 
-  const handleJoinEvent = () => {
-    const savedJoinedEvents =
-      JSON.parse(
-        localStorage.getItem('joinedEvents')
-      ) || []
+  const fetchEvent = async () => {
+    const { data, error } = await supabase.from('events').select('*').eq('id', id).single()
+    if(error) console.log(error)
+    setEvent(data)
+    setLoading(false)
+  }
 
-    if (joined) {
-      const updatedJoinedEvents =
-        savedJoinedEvents.filter(
-          (eventId) =>
-            String(eventId) !== String(id)
-        )
+  const fetchComments = async () => {
+    const { data: commentsData } = await supabase
+  .from('event_comments')
+  .select('*')
+  .eq('event_id', id)
+  .order('created_at', { ascending: false })
+    
+    if(!commentsData) return setComments([])
 
-      localStorage.setItem(
-        'joinedEvents',
-        JSON.stringify(updatedJoinedEvents)
-      )
+    const userIds = [...new Set(commentsData.map(c => c.user_id))].filter(Boolean)
+    
+    const { data: profilesData } = await supabase
+  .from('profiles')
+  .select('id, name')
+  .in('id', userIds)
 
-      setJoined(false)
+    const commentsWithNames = commentsData.map(c => ({
+   ...c,
+      profiles: profilesData?.find(p => p.id === c.user_id)
+    }))
 
-      alert('You have left this event.')
+    setComments(commentsWithNames)
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Delete this event?')) return
+    await supabase.from('events').delete().eq('id', id)
+    alert('Event deleted')
+    navigate(`/community/${event.community_id}`)
+  }
+
+  // NEW: Delete Comment Function
+  const handleDeleteComment = async (commentId) => {
+    if (!confirm('Delete this comment?')) return
+    const { error } = await supabase.from('event_comments').delete().eq('id', commentId)
+    if(error) alert("Error: " + error.message)
+    else fetchComments() // refresh comments
+  }
+
+  const handleComment = async (e) => {
+    e.preventDefault()
+    if (!newComment.trim()) return
+    
+    const { error } = await supabase.from('event_comments').insert([{ 
+      comment: newComment,
+      event_id: id, 
+      user_id: user.id 
+    }])
+    
+    if(error) {
+      alert("Error: " + error.message)
+      console.log(error)
     } else {
-      const alreadyJoined =
-        savedJoinedEvents.some(
-          (eventId) =>
-            String(eventId) === String(id)
-        )
-
-      if (alreadyJoined) {
-        setJoined(true)
-        return
-      }
-
-      const updatedJoinedEvents = [
-        ...savedJoinedEvents,
-        id,
-      ]
-
-      localStorage.setItem(
-        'joinedEvents',
-        JSON.stringify(updatedJoinedEvents)
-      )
-
-      setJoined(true)
-
-      alert('You have joined this event!')
+      setNewComment('')
+      fetchComments()
     }
   }
 
-  const getEventDate = () => {
-    if (!event) {
-      return {
-        day: '--',
-        month: '---',
-      }
-    }
-
-    if (event.date) {
-      const date = new Date(
-        `${event.date}T00:00:00`
-      )
-
-      return {
-        day: date.getDate(),
-        month: date
-          .toLocaleDateString('en-US', {
-            month: 'short',
-          })
-          .toUpperCase(),
-      }
-    }
-
-    return {
-      day: event.day || '--',
-      month: event.month || '---',
-    }
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href)
+    alert('Link copied!')
   }
 
-  // EVENT NOT FOUND
-  if (!event) {
-    return (
-      <div className="dashboard">
-
-        <aside className="dashboard-sidebar">
-
-          <Link
-            to="/"
-            className="dashboard-logo"
-          >
-            <div className="brand-icon">
-              C
-            </div>
-
-            <span>
-              Community Connect
-            </span>
-          </Link>
-
-          <nav className="dashboard-nav">
-
-            <Link to="/dashboard">
-              <span>🏠</span>
-              Dashboard
-            </Link>
-
-            <Link to="/communities">
-              <span>🏘️</span>
-              Communities
-            </Link>
-
-            <Link to="/members">
-              <span>👥</span>
-              Members
-            </Link>
-
-            <Link
-              to="/events"
-              className="active"
-            >
-              <span>📅</span>
-              Events
-            </Link>
-
-            <Link to="/announcements">
-              <span>📢</span>
-              Announcements
-            </Link>
-
-          </nav>
-
-          <div className="dashboard-bottom">
-
-            <Link to="/profile">
-              <span>👤</span>
-              Profile
-            </Link>
-
-            <Logout />
-
-          </div>
-
-        </aside>
-
-        <main className="dashboard-main">
-
-          <Link
-            to="/events"
-            className="back-link"
-          >
-            ← Back to Events
-          </Link>
-
-          <div className="empty-events">
-
-            <div>
-              📅
-            </div>
-
-            <h2>
-              Event Not Found
-            </h2>
-
-            <p>
-              We could not find this event.
-            </p>
-
-            <Link
-              to="/events"
-              className="create-community-btn"
-            >
-              ← Return to Events
-            </Link>
-
-          </div>
-
-        </main>
-
-      </div>
-    )
-  }
-
-  const eventDate = getEventDate()
+  if (loading) return <div className="auth-page"><div className="auth-form-container"><p>Loading...</p></div></div>
+  if (!event) return <div className="auth-page"><div className="auth-form-container"><p>Event not found</p></div></div>
 
   return (
-    <div className="dashboard">
-
-      {/* SIDEBAR */}
-
-      <aside className="dashboard-sidebar">
-
-        <Link
-          to="/"
-          className="dashboard-logo"
-        >
-          <div className="brand-icon">
-            C
-          </div>
-
-          <span>
-            Community Connect
-          </span>
-        </Link>
-
-        <nav className="dashboard-nav">
-
-          <Link to="/dashboard">
-            <span>🏠</span>
-            Dashboard
-          </Link>
-
-          <Link to="/communities">
-            <span>🏘️</span>
-            Communities
-          </Link>
-
-          <Link to="/members">
-            <span>👥</span>
-            Members
-          </Link>
-
-          <Link
-            to="/events"
-            className="active"
-          >
-            <span>📅</span>
-            Events
-          </Link>
-
-          <Link to="/announcements">
-            <span>📢</span>
-            Announcements
-          </Link>
-
-        </nav>
-
-        <div className="dashboard-bottom">
-
-          <Link to="/profile">
-            <span>👤</span>
-            Profile
-          </Link>
-
-          {/* REAL LOGOUT */}
-          <Logout />
-
+    <div className="auth-page">
+      <div className="auth-brand">
+        <Link to="/" className="auth-logo"><div className="brand-icon">E</div><span>Community Connect</span></Link>
+        <div className="auth-message">
+          <div className="auth-symbol">📅</div>
+          <h1>{event.title}</h1>
         </div>
+      </div>
+      <div className="auth-form-container">
+        <div className="auth-form">
+          <Link to={`/community/${event.community_id}`} className="mobile-back">← Back to Community</Link>
+          
+          <h2>{event.title}</h2>
+          {event.event_date && <p><b>Date:</b> {event.event_date}</p>}
+          {event.time && <p><b>Time:</b> {event.time}</p>}
+          <p><b>Location:</b> {event.location}</p>
+          <p>{event.description}</p>
 
-      </aside>
-
-      {/* MAIN CONTENT */}
-
-      <main className="dashboard-main">
-
-        <Link
-          to="/events"
-          className="back-link"
-        >
-          ← Back to Events
-        </Link>
-
-        {/* EVENT HEADER */}
-
-        <section className="community-details-hero">
-
-          <div className="community-details-icon">
-            📅
+          <div style={{ display: 'flex', gap: '10px', margin: '20px 0' }}>
+            <button onClick={handleShare} className="primary-btn" style={{ background: '#4CAF50' }}>📤 Share</button>
+            {user?.id === event.created_by && (
+              <button onClick={handleDelete} className="primary-btn" style={{ background: '#d93025' }}>🗑️ Delete Event</button>
+            )}
           </div>
 
-          <div className="community-details-info">
-
-            <span
-              className={`community-type ${
-                event.type?.toLowerCase() ||
-                'general'
-              }`}
-            >
-              {event.type || 'General'}
-            </span>
-
-            <h1>
-              {event.title}
-            </h1>
-
-            <p>
-              {event.description}
-            </p>
-
-            <div className="community-detail-meta">
-
-              <span>
-                📅 {eventDate.day} {eventDate.month}
-              </span>
-
-              <span>
-                🕓 {event.time}
-              </span>
-
-              <span>
-                📍 {event.location}
-              </span>
-
+          <hr />
+          <h3>Comments 💬</h3>
+          <form onSubmit={handleComment}>
+            <div className="form-group">
+              <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." rows="2" required />
             </div>
+            <button type="submit" className="primary-btn auth-submit">Post Comment</button>
+          </form>
 
+          <div style={{ marginTop: '20px' }}>
+            {comments.map(c => (
+              <div key={c.id} style={{ borderBottom: '1px solid #eee', padding: '10px 0', position: 'relative' }}>
+                <p style={{ margin: '0 0 5px 0' }}>
+                  <b>{c.profiles?.name || 'Anonymous'}</b>
+                </p>
+                <p style={{ margin: '0 0 5px 0' }}>{c.comment}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <small style={{ color: '#666' }}>{new Date(c.created_at).toLocaleString()}</small>
+                  
+                  {/* ONLY SHOW DELETE IF IT'S YOUR COMMENT */}
+                  {user?.id === c.user_id && (
+                    <button 
+                      onClick={() => handleDeleteComment(c.id)}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: '#d93025', 
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-
-          <button
-            type="button"
-            className={
-              joined
-                ? 'join-community-btn joined'
-                : 'join-community-btn'
-            }
-            onClick={handleJoinEvent}
-          >
-            {joined
-              ? '✓ Joined Event'
-              : '+ Join Event'}
-          </button>
-
-        </section>
-
-        {/* EVENT INFORMATION */}
-
-        <section className="community-details-grid">
-
-          <div className="details-card">
-
-            <div className="details-card-icon">
-              📅
-            </div>
-
-            <h2>
-              Event Date
-            </h2>
-
-            <p>
-              {eventDate.day} {eventDate.month}
-            </p>
-
-          </div>
-
-          <div className="details-card">
-
-            <div className="details-card-icon">
-              🕓
-            </div>
-
-            <h2>
-              Event Time
-            </h2>
-
-            <p>
-              {event.time || 'Time not specified'}
-            </p>
-
-          </div>
-
-          <div className="details-card">
-
-            <div className="details-card-icon">
-              📍
-            </div>
-
-            <h2>
-              Location
-            </h2>
-
-            <p>
-              {event.location || 'Location not specified'}
-            </p>
-
-          </div>
-
-        </section>
-
-        {/* EVENT DESCRIPTION */}
-
-        <section className="community-welcome">
-
-          <span>
-            🤝
-          </span>
-
-          <div>
-
-            <p className="dashboard-label">
-              COMMUNITY CONNECT
-            </p>
-
-            <h2>
-              You are welcome to participate
-            </h2>
-
-            <p>
-              Join this event, connect with
-              other community members and
-              participate in meaningful
-              activities.
-            </p>
-
-          </div>
-
-        </section>
-
-      </main>
-
+        </div>
+      </div>
     </div>
   )
 }
-
 export default EventDetails

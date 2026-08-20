@@ -1,315 +1,134 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
 import '../App.css'
 
 function CreateEvent() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const communityId = searchParams.get('community')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
-  const [location, setLocation] = useState('')
-  const [type, setType] = useState('General')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [community, setCommunity] = useState(null)
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (!communityId) {
+      alert("No community selected")
+      navigate('/communities')
+      return
+    }
+    // Get community name for the header
+    supabase.from('communities').select('name').eq('id', communityId).single()
+    .then(({ data }) => setCommunity(data))
+  }, [communityId, navigate])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setLoading(true)
+    setError('')
 
-    if (
-      !title ||
-      !description ||
-      !date ||
-      !time ||
-      !location
-    ) {
-      alert('Please fill in all fields.')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError("Please login first")
+      setLoading(false)
       return
     }
 
-    const existingEvents =
-      JSON.parse(localStorage.getItem('events')) || []
+    // Combine date + time into 1 datetime for the 'date' column
+    const event_datetime = date && time? `${date}T${time}:00` : null
 
-    const newEvent = {
-      id: Date.now(),
-      title,
-      description,
-      date,
-      time,
-      location,
-      type,
-      status: 'Upcoming',
+    const { error } = await supabase
+    .from('events')
+    .insert([{
+        title,
+        description,
+        location,
+        date: event_datetime, // FIXED: was event_date
+        time: time, // FIXED: was event_time
+        type: 'General', // ADDED
+        status: 'Upcoming', // ADDED
+        community_id: communityId,
+        created_by: user.id
+      }])
+
+    setLoading(false)
+
+    if (error) {
+      setError(error.message)
+      console.log(error)
+      return
     }
 
-    localStorage.setItem(
-      'events',
-      JSON.stringify([
-        ...existingEvents,
-        newEvent,
-      ])
-    )
-
     alert('Event created successfully!')
-
-    navigate('/events')
+    navigate(`/community/${communityId}`)
   }
 
   return (
-    <div className="dashboard">
-
-      {/* Sidebar */}
-
-      <aside className="dashboard-sidebar">
-
-        <Link to="/" className="dashboard-logo">
-          <div className="brand-icon">C</div>
-
-          <span>
-            Community Connect
-          </span>
+    <div className="auth-page">
+      {/* LEFT BRAND SIDE */}
+      <div className="auth-brand">
+        <Link to="/" className="auth-logo">
+          <div className="brand-icon">E</div>
+          <span>Community Connect</span>
         </Link>
-
-        <nav className="dashboard-nav">
-
-          <Link to="/dashboard">
-            <span>🏠</span>
-            Dashboard
-          </Link>
-
-          <Link to="/communities">
-            <span>🏘️</span>
-            Communities
-          </Link>
-
-          <Link to="/members">
-            <span>👥</span>
-            Members
-          </Link>
-
-          <Link to="/events" className="active">
-            <span>📅</span>
-            Events
-          </Link>
-
-          <Link to="/announcements">
-            <span>📢</span>
-            Announcements
-          </Link>
-
-        </nav>
-
-        <div className="dashboard-bottom">
-
-          <Link to="/profile">
-            <span>👤</span>
-            Profile
-          </Link>
-
-          <Link to="/">
-            <span>🚪</span>
-            Logout
-          </Link>
-
+        <div className="auth-message">
+          <div className="auth-symbol">📅</div>
+          <h1>Create amazing<span> events.</span></h1>
+          <p>Bring your {community?.name || 'community'} together with events people will love.</p>
         </div>
+      </div>
 
-      </aside>
+      {/* RIGHT FORM SIDE */}
+      <div className="auth-form-container">
+        <div className="auth-form">
+          <Link to={`/community/${communityId}`} className="mobile-back">← Back to Community</Link>
 
-
-      {/* Main Content */}
-
-      <main className="dashboard-main">
-
-        <Link
-          to="/events"
-          className="back-link"
-        >
-          ← Back to Events
-        </Link>
-
-        <section className="create-event-container">
-
-          <div className="page-header">
-
-            <div>
-
-              <p className="dashboard-label">
-                COMMUNITY CONNECT
-              </p>
-
-              <h1>
-                Create an Event
-              </h1>
-
-              <p>
-                Create an event and invite
-                your community members.
-              </p>
-
-            </div>
-
+          <div className="form-heading">
+            <h2>Create new event 📅</h2>
+            <p>Fill in the details for your event.</p>
           </div>
 
+          {error && <p style={{ color: '#d93025', marginBottom: '10px' }}>{error}</p>}
 
-          <form
-            className="create-event-form"
-            onSubmit={handleSubmit}
-          >
-
-            {/* Title */}
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="title">Event Title</label>
+              <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Weekly Meetup" required />
+            </div>
 
             <div className="form-group">
-
-              <label>
-                Event Title
-              </label>
-
-              <input
-                type="text"
-                placeholder="Enter event title"
-                value={title}
-                onChange={(e) =>
-                  setTitle(e.target.value)
-                }
-              />
-
+              <label htmlFor="description">Description</label>
+              <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What will happen at this event?" rows="3" />
             </div>
-
-
-            {/* Description */}
 
             <div className="form-group">
-
-              <label>
-                Description
-              </label>
-
-              <textarea
-                placeholder="Describe your event..."
-                value={description}
-                onChange={(e) =>
-                  setDescription(e.target.value)
-                }
-                rows="5"
-              />
-
+              <label htmlFor="location">Location</label>
+              <input id="location" type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. PKM Hall" />
             </div>
 
-
-            {/* Date */}
-
-            <div className="form-group">
-
-              <label>
-                Date
-              </label>
-
-              <input
-                type="date"
-                value={date}
-                onChange={(e) =>
-                  setDate(e.target.value)
-                }
-              />
-
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label htmlFor="date">Date</label>
+                <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label htmlFor="time">Time</label>
+                <input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+              </div>
             </div>
 
-
-            {/* Time */}
-
-            <div className="form-group">
-
-              <label>
-                Time
-              </label>
-
-              <input
-                type="time"
-                value={time}
-                onChange={(e) =>
-                  setTime(e.target.value)
-                }
-              />
-
-            </div>
-
-
-            {/* Location */}
-
-            <div className="form-group">
-
-              <label>
-                Location
-              </label>
-
-              <input
-                type="text"
-                placeholder="Enter event location"
-                value={location}
-                onChange={(e) =>
-                  setLocation(e.target.value)
-                }
-              />
-
-            </div>
-
-
-            {/* Type */}
-
-            <div className="form-group">
-
-              <label>
-                Community Type
-              </label>
-
-              <select
-                value={type}
-                onChange={(e) =>
-                  setType(e.target.value)
-                }
-              >
-
-                <option value="General">
-                  🤝 General
-                </option>
-
-                <option value="Muslim">
-                  🕌 Muslim
-                </option>
-
-                <option value="Christian">
-                  ⛪ Christian
-                </option>
-
-              </select>
-
-            </div>
-
-
-            {/* Buttons */}
-
-            <div className="form-actions">
-
-              <Link
-                to="/events"
-                className="cancel-btn"
-              >
-                Cancel
-              </Link>
-
-              <button
-                type="submit"
-                className="create-community-btn"
-              >
-                Create Event
-              </button>
-
-            </div>
-
+            <button type="submit" className="primary-btn auth-submit" disabled={loading}>
+              {loading? 'Creating...' : 'Create Event →'}
+            </button>
           </form>
-
-        </section>
-
-      </main>
-
+        </div>
+      </div>
     </div>
   )
 }

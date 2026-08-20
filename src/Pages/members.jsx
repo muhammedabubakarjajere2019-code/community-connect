@@ -1,587 +1,127 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import Logout from '../components/Logout'
-import '../App.css'
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
 
-function Members() {
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('All')
-  const [savedMembers, setSavedMembers] = useState([])
+export default function Members() {
+  const { id } = useParams();
+  const [members, setMembers] = useState([]);
+  const [community, setCommunity] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [isMember, setIsMember] = useState(false);
 
-  // Default members
-  const defaultMembers = [
-    {
-      id: 1,
-      name: 'Aisha Mohammed',
-      email: 'aisha@example.com',
-      community: 'Muslim Youth Community',
-      type: 'Muslim',
-      joined: '12 Aug 2026',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      name: 'David John',
-      email: 'david@example.com',
-      community: 'Christian Youth Community',
-      type: 'Christian',
-      joined: '10 Aug 2026',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      name: 'Abdullahi Musa',
-      email: 'abdullahi@example.com',
-      community: 'Muslim Youth Community',
-      type: 'Muslim',
-      joined: '08 Aug 2026',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      name: 'Grace Daniel',
-      email: 'grace@example.com',
-      community: 'Christian Family Community',
-      type: 'Christian',
-      joined: '05 Aug 2026',
-      status: 'Active',
-    },
-    {
-      id: 5,
-      name: 'Ibrahim Ali',
-      email: 'ibrahim@example.com',
-      community: 'General Community',
-      type: 'General',
-      joined: '02 Aug 2026',
-      status: 'Active',
-    },
-    {
-      id: 6,
-      name: 'Mary Joseph',
-      email: 'mary@example.com',
-      community: 'General Community',
-      type: 'General',
-      joined: '30 Jul 2026',
-      status: 'Inactive',
-    },
-  ]
-
-  // Load all saved members
   useEffect(() => {
-    const savedMembersData =
-      JSON.parse(localStorage.getItem('members')) || []
+    getUser()
+    fetchData();
+  }, [id]);
 
-    const invitedMembers =
-      JSON.parse(localStorage.getItem('invitedMembers')) || []
+  const getUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    setUser(user)
+  }
 
-    setSavedMembers([
-      ...savedMembersData,
-      ...invitedMembers,
-    ])
-  }, [])
+  const fetchData = async () => {
+    setLoading(true);
 
-  // Combine default + saved members
-  const allMembers = [
-    ...defaultMembers,
-    ...savedMembers,
-  ]
+    const { data: commData } = await supabase
+     .from('communities')
+     .select('*')
+     .eq('id', id)
+     .single();
+    setCommunity(commData);
 
-  // Remove duplicate IDs
-  const uniqueMembers = allMembers.filter(
-    (member, index, array) =>
-      index ===
-      array.findIndex(
-        (item) =>
-          String(item.id) === String(member.id)
-      )
-  )
+    const { data: memberData } = await supabase
+     .from('community_members')
+     .select('user_id, joined_at')
+     .eq('community_id', id);
 
-  // Search and filter
-  const filteredMembers = uniqueMembers.filter(
-    (member) => {
-      const name =
-        member.name?.toLowerCase() || ''
-
-      const email =
-        member.email?.toLowerCase() || ''
-
-      const community =
-        member.community?.toLowerCase() || ''
-
-      const searchText =
-        search.toLowerCase()
-
-      const matchesSearch =
-        name.includes(searchText) ||
-        email.includes(searchText) ||
-        community.includes(searchText)
-
-      const matchesFilter =
-        filter === 'All' ||
-        member.type === filter
-
-      return matchesSearch && matchesFilter
+    if(user) {
+      const isAlreadyMember = memberData?.some(m => m.user_id === user.id)
+      setIsMember(isAlreadyMember)
     }
-  )
 
-  // Statistics
-  const totalMembers =
-    uniqueMembers.length
+    if(!memberData || memberData.length === 0){
+      setMembers([])
+      setLoading(false)
+      return
+    }
 
-  const activeMembers =
-    uniqueMembers.filter(
-      (member) =>
-        member.status === 'Active'
-    ).length
+    const userIds = memberData.map(m => m.user_id).filter(Boolean)
+    const { data: profilesData } = await supabase
+     .from('profiles')
+     .select('id, username, full_name, avatar_url')
+     .in('id', userIds)
 
-  // Count members who joined this month
-  const currentMonth =
-    new Date().getMonth()
+    const combined = memberData
+     .filter(m => m.user_id)
+     .map(m => ({
+       ...m,
+        profiles: profilesData?.find(p => p.id === m.user_id)
+      }))
 
-  const currentYear =
-    new Date().getFullYear()
+    setMembers(combined);
+    setLoading(false);
+  };
 
-  const newThisMonth =
-    uniqueMembers.filter((member) => {
-      if (!member.joined) return false
+  const handleJoin = async () => {
+    if(!user) return alert("Login first")
+    await supabase.from('community_members').insert({ community_id: id, user_id: user.id })
+    setIsMember(true)
+    fetchData()
+  }
 
-      const joinedDate =
-        new Date(member.joined)
+  const handleLeave = async () => {
+    await supabase.from('community_members').delete().eq('community_id', id).eq('user_id', user.id)
+    setIsMember(false)
+    fetchData()
+  }
 
-      return (
-        !isNaN(joinedDate.getTime()) &&
-        joinedDate.getMonth() === currentMonth &&
-        joinedDate.getFullYear() === currentYear
-      )
-    }).length
+  if (loading) return <p style={{padding:20, textAlign:'center'}}>Loading members...</p>;
 
   return (
-    <div className="dashboard">
-
-      {/* SIDEBAR */}
-
-      <aside className="dashboard-sidebar">
-
-        <Link
-          to="/"
-          className="dashboard-logo"
-        >
-          <div className="brand-icon">
-            C
-          </div>
-
-          <span>
-            Community Connect
-          </span>
-        </Link>
-
-        <nav className="dashboard-nav">
-
-          <Link to="/dashboard">
-            <span>🏠</span>
-            Dashboard
-          </Link>
-
-          <Link to="/communities">
-            <span>🏘️</span>
-            Communities
-          </Link>
-
-          <Link
-            to="/members"
-            className="active"
-          >
-            <span>👥</span>
-            Members
-          </Link>
-
-          <Link to="/events">
-            <span>📅</span>
-            Events
-          </Link>
-
-          <Link to="/announcements">
-            <span>📢</span>
-            Announcements
-          </Link>
-
-        </nav>
-
-        <div className="dashboard-bottom">
-
-          <Link to="/profile">
-            <span>👤</span>
-            Profile
-          </Link>
-
-          <Logout />
-
+    <div style={{padding:20, maxWidth:800, margin:'0 auto', fontFamily:'system-ui'}}>
+      <Link to={`/communities/${id}`} style={{color:'#2563eb', textDecoration:'none', fontWeight:600}}>← Back to Community</Link>
+      
+      <div style={{background:'#fff', padding:24, borderRadius:16, border:'1px solid #e5e7eb', marginTop:12, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12}}>
+        <div>
+          <h1 style={{margin:0, fontSize:28, fontWeight:800}}>{community?.name} Members</h1>
+          <p style={{margin:'4px 0 0 0', color:'#6b7280'}}><b>{members.length}</b> Total Members</p>
         </div>
-
-      </aside>
-
-
-      {/* MAIN */}
-
-      <main className="dashboard-main">
-
-        {/* HEADER */}
-
-        <header className="page-header">
-
-          <div>
-
-            <p className="dashboard-label">
-              COMMUNITY CONNECT
-            </p>
-
-            <h1>
-              Community Members
-            </h1>
-
-            <p>
-              View and manage people connected
-              to your communities.
-            </p>
-
-          </div>
-
-          <Link
-            to="/invite-member"
-            className="create-community-btn"
-          >
-            + Invite Member
-          </Link>
-
-        </header>
-
-
-        {/* STATISTICS */}
-
-        <section className="member-stats">
-
-          <div className="member-stat-card">
-
-            <div className="member-stat-icon">
-              👥
-            </div>
-
-            <div>
-
-              <span>
-                Total Members
-              </span>
-
-              <strong>
-                {totalMembers}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <div className="member-stat-card">
-
-            <div className="member-stat-icon">
-              🟢
-            </div>
-
-            <div>
-
-              <span>
-                Active Members
-              </span>
-
-              <strong>
-                {activeMembers}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <div className="member-stat-card">
-
-            <div className="member-stat-icon">
-              🆕
-            </div>
-
-            <div>
-
-              <span>
-                New This Month
-              </span>
-
-              <strong>
-                {newThisMonth}
-              </strong>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        {/* SEARCH */}
-
-        <section className="members-toolbar">
-
-          <div className="member-search">
-
-            <span>
-              🔍
-            </span>
-
-            <input
-              type="text"
-              placeholder="Search members..."
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-            />
-
-          </div>
-
-
-          <div className="member-filters">
-
-            {[
-              'All',
-              'Muslim',
-              'Christian',
-              'General',
-            ].map((type) => (
-
-              <button
-                key={type}
-                className={
-                  filter === type
-                    ? 'selected'
-                    : ''
-                }
-                onClick={() =>
-                  setFilter(type)
-                }
-              >
-
-                {type === 'Muslim' &&
-                  '🕌 '}
-
-                {type === 'Christian' &&
-                  '⛪ '}
-
-                {type === 'General' &&
-                  '🤝 '}
-
-                {type}
-
-              </button>
-
-            ))}
-
-          </div>
-
-        </section>
-
-
-        {/* TABLE */}
-
-        <section className="members-table-card">
-
-          <div className="members-table-header">
-
-            <div>
-
-              <h2>
-                All Members
-              </h2>
-
-              <p>
-                {filteredMembers.length}{' '}
-                members displayed
-              </p>
-
-            </div>
-
-          </div>
-
-
-          <div className="members-table-wrapper">
-
-            <table className="members-table">
-
-              <thead>
-
-                <tr>
-
-                  <th>
-                    Member
-                  </th>
-
-                  <th>
-                    Community
-                  </th>
-
-                  <th>
-                    Type
-                  </th>
-
-                  <th>
-                    Joined
-                  </th>
-
-                  <th>
-                    Status
-                  </th>
-
-                  <th>
-                    Action
-                  </th>
-
-                </tr>
-
-              </thead>
-
-
-              <tbody>
-
-                {filteredMembers.map(
-                  (member) => (
-
-                    <tr
-                      key={member.id}
-                    >
-
-                      <td>
-
-                        <div className="member-info">
-
-                          <div className="member-avatar">
-
-                            {member.name
-                              ? member.name
-                                  .charAt(0)
-                                  .toUpperCase()
-                              : 'M'}
-
-                          </div>
-
-                          <div>
-
-                            <strong>
-                              {member.name}
-                            </strong>
-
-                            <span>
-                              {member.email}
-                            </span>
-
-                          </div>
-
-                        </div>
-
-                      </td>
-
-
-                      <td>
-                        {member.community ||
-                          'General Community'}
-                      </td>
-
-
-                      <td>
-
-                        <span
-                          className={`member-type ${
-                            member.type?.toLowerCase() ||
-                            'general'
-                          }`}
-                        >
-                          {member.type ||
-                            'General'}
-                        </span>
-
-                      </td>
-
-
-                      <td>
-                        {member.joined ||
-                          'Recently'}
-                      </td>
-
-
-                      <td>
-
-                        <span
-                          className={`member-status ${
-                            member.status?.toLowerCase() ||
-                            'active'
-                          }`}
-                        >
-                          ●{' '}
-                          {member.status ||
-                            'Active'}
-                        </span>
-
-                      </td>
-
-
-                      <td>
-
-                        <Link
-                          to={`/member/${member.id}`}
-                          className="member-view-btn"
-                        >
-                          View
-                        </Link>
-
-                      </td>
-
-                    </tr>
-
-                  )
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </section>
-
-
-        {/* NO RESULTS */}
-
-        {filteredMembers.length === 0 && (
-
-          <div className="empty-events">
-
-            <div>
-              👥
-            </div>
-
-            <h2>
-              No members found
-            </h2>
-
-            <p>
-              Try another search or select
-              a different community type.
-            </p>
-
-          </div>
-
+        {user && (
+          isMember 
+         ? <button onClick={handleLeave} style={{background:'#ef4444', color:'#fff', border:'none', padding:'10px 20px', borderRadius:10, fontWeight:600, cursor:'pointer'}}>Leave</button>
+          : <button onClick={handleJoin} style={{background:'#16a34a', color:'#fff', border:'none', padding:'10px 20px', borderRadius:10, fontWeight:600, cursor:'pointer'}}>Join Community</button>
         )}
+      </div>
 
-      </main>
-
+      {members.length === 0? (
+        <div style={{background:'white', padding:40, borderRadius:12, textAlign:'center', marginTop:20, border:'1px solid #e5e7eb'}}>
+          <p style={{fontSize:18, fontWeight:600}}>No members yet</p>
+        </div>
+      ) : (
+        <div style={{display:'grid', gap:12, marginTop:20}}>
+          {members.map((m) => (
+            <div key={m.user_id} style={{background:'white', padding:16, borderRadius:12, border:'1px solid #e5e7eb', display:'flex', gap:12, alignItems:'center'}}>
+              <img
+                src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'U'}`}
+                alt="avatar"
+                style={{width:48, height:48, borderRadius:'50%', objectFit:'cover'}}
+              />
+              <div style={{flex:1}}>
+                <p style={{fontWeight:700, margin:0}}>
+                  {m.profiles?.full_name || m.profiles?.username || 'User'}
+                </p>
+                <p style={{fontSize:14, color:'#6b7280', margin:0}}>
+                  {m.profiles?.username? `@${m.profiles.username}` : ''}
+                </p>
+                <p style={{fontSize:12, color:'#9ca3af', margin:0}}>
+                  Joined {new Date(m.joined_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
-  )
+  );
 }
-
-export default Members
