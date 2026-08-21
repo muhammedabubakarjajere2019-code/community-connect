@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import Logout from "../components/Logout";
+import Logout from "../components/logout";
 import "../App.css";
 
 export default function EditCommunity() {
