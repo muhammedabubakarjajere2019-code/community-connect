@@ -15,18 +15,25 @@ function Communities() {
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
+      
+      // FIX: STOP THE LOOP - REDIRECT TO LOGIN IF NOT LOGGED IN
+      if (!user) {
+        navigate('/login')
+        return
+      }
+      
       setCurrentUser(user)
       fetchCommunities()
     }
     init()
-  }, [])
+  }, [navigate]) // Added navigate to dependency array
 
   async function fetchCommunities() {
     setLoading(true)
     const { data } = await supabase
-      .from('communities')
-      .select('*')
-      .order('created_at', { ascending: false })
+     .from('communities')
+     .select('*')
+     .order('created_at', { ascending: false })
     
     setCommunities(data || [])
     setLoading(false)
