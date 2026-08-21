@@ -13,15 +13,16 @@ function Login() {
   const [loading, setLoading] = useState(false)
 
   // FIXED: Auto redirect if user is already logged in
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } = await supabase.auth.getSession() // <- FIXED }
-      if (session) {
-        navigate('/communities') // send them to dashboard if already logged in
-      }
+  // FIXED: Auto redirect if user is already logged in
+useEffect(() => {
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      navigate('/communities')
     }
-    checkSession()
-  }, [navigate])
+  }
+  checkSession()
+}, [navigate])
 
   const handleForgotPassword = async () => {
     if (!email) {
