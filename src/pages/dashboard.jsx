@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Link } from 'react-router-dom'
-import Logout from '../components/Logout'
+import Logout from '../components/logout'
 import '../App.css'
 
 export default function Dashboard() {
