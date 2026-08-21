@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import Logout from '../components/Logout'
+import Logout from '../components/logout'
 import '../App.css'
 
 function Profile() {

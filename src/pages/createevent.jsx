@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import Logout from '../components/Logout'
+import Logout from '../components/logout'
 import '../App.css'
 
 function CreateEvent() {
