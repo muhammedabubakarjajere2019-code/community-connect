@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../lib/SupabaseClient'
 import Logout from '../components/logout'
 import '../App.css'
 

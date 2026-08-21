@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/SupabaseClient";
 import Logout from '../components/logout'
 import '../App.css'
 import { MoreVertical, Trash2 } from 'lucide-react' // 1. ADD THIS

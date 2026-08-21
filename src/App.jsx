@@ -8,6 +8,7 @@ import Dashboard from './pages/dashboard.jsx'
 import Communities from './pages/communities.jsx'
 import CommunityDetails from './pages/communitydetails.jsx'
 import EditCommunity from './pages/editcommunity.jsx'
+import CreateCommunity from './pages/createcommunity.jsx'
 import Members from './pages/members.jsx'
 import MemberDetails from './pages/memberdetails.jsx'
 import InviteMember from './pages/invitemember.jsx'
@@ -17,12 +18,11 @@ import EventDetails from './pages/eventdetails.jsx'
 import Announcements from './pages/announcements.jsx'
 import CreateAnnouncement from './pages/createannouncement.jsx'
 import AnnouncementDetails from './pages/announcementdetails.jsx'
-import CreateCommunity from './pages/createcommunity.jsx'
 import Profile from './pages/profile.jsx'
 import ForgotPassword from './pages/forgotpassword.jsx'
 import ResetPassword from './pages/resetpassword.jsx'
 import MyEvents from './pages/myevents.jsx'
-import ProtectedRoute from './protectedroute.jsx'
+import ProtectedRoute from './pages/protectedroute.jsx'
 
 function App() {
   return (
@@ -39,20 +39,26 @@ function App() {
         <Route path="/communities/:id" element={<ProtectedRoute><CommunityDetails /></ProtectedRoute>} />
         <Route path="/communities/:id/edit" element={<ProtectedRoute><EditCommunity /></ProtectedRoute>} />
         <Route path="/communities/new" element={<ProtectedRoute><CreateCommunity /></ProtectedRoute>} />
-        <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
-        <Route path="/members/:id" element={<ProtectedRoute><MemberDetails /></ProtectedRoute>} />
+        <Route path="/create-community" element={<ProtectedRoute><CreateCommunity /></ProtectedRoute>} />
+        
+        {/* FIXED: Members now scoped to community */}
+        <Route path="/communities/:id/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
+        <Route path="/communities/:communityId/members/:userId" element={<ProtectedRoute><MemberDetails /></ProtectedRoute>} />
         <Route path="/members/invite" element={<ProtectedRoute><InviteMember /></ProtectedRoute>} />
+        
         <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
         <Route path="/events/new" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
+        <Route path="/create-event" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
         <Route path="/events/:id" element={<ProtectedRoute><EventDetails /></ProtectedRoute>} />
         <Route path="/my-events" element={<ProtectedRoute><MyEvents /></ProtectedRoute>} />
         <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
         <Route path="/announcements/new" element={<ProtectedRoute><CreateAnnouncement /></ProtectedRoute>} />
+        <Route path="/create-announcement" element={<ProtectedRoute><CreateAnnouncement /></ProtectedRoute>} />
         <Route path="/announcements/:id" element={<ProtectedRoute><AnnouncementDetails /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       </Routes>
     </Router>
-  )
+  ) 
 }
 
 export default App

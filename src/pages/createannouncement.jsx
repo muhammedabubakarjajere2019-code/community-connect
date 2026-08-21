@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from "../lib/supabaseClient" // <-- ADDED
+import { supabase } from "../lib/SupabaseClient" // <-- ADDED
 import Logout from '../components/logout'
 import '../App.css'
 

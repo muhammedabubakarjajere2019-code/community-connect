@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { supabase } from "../lib/supabaseClient"
+import { supabase } from "../lib/SupabaseClient"
 import EmojiPicker from 'emoji-picker-react'
 
 export default function CommentSection({ communityId, postId }) {

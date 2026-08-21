@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/SupabaseClient";
 import '../App.css'
 import registerImage from './images/community-register.png'
 

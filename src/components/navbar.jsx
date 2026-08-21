@@ -1,7 +1,7 @@
 // Navbar.jsx
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../lib/SupabaseClient'
 
 export default function Navbar() {
   const [session, setSession] = useState(null)

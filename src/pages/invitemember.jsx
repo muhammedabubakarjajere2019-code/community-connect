@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../lib/SupabaseClient'
 
 function InviteMember() {
   const { id: communityId } = useParams()

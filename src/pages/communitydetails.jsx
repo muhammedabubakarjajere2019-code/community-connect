@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../lib/SupabaseClient'
 import CreatePost from '../components/createpost'
 import CommentSection from '../components/commentsection'
 
@@ -33,7 +33,7 @@ export default function CommunityDetails() {
   }, [user])
 
   const getUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser() // FIXED: added }
     setUser(user)
     if(user) checkMembership(user.id)
   }
@@ -58,7 +58,7 @@ export default function CommunityDetails() {
     const postIds = postsData?.map(p => p.id) || []
 
     const finalPosts = postsData?.map(post => ({
-    ...post, 
+   ...post, 
       profiles: profilesData?.find(p => p.id === post.user_id) || null,
       likes: likesData?.filter(l => l.post_id === post.id) || [],
       views: viewsData?.filter(v => v.post_id === post.id).length || 0
@@ -97,7 +97,6 @@ export default function CommunityDetails() {
   const handleLike = async (postId) => { if(!user) return alert("Please login first"); const post = posts.find(p => p.id === postId); const hasLiked = post.likes.some(l => l.user_id === user.id); if(hasLiked) await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', user.id); else { await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id }); createNotification('like', postId, post.user_id) } fetchPosts(); }
   const handleShare = (postId) => { navigator.clipboard.writeText(`${window.location.origin}/post/${postId}`); alert('Link copied!') }
   
-  // NEW: REPORT FUNCTION ADDED
   const handleReport = async (postId) => {
     if(!user) return alert("Please login first")
     const reason = prompt("Why are you reporting this post?")
@@ -137,7 +136,7 @@ export default function CommunityDetails() {
         <p className="cd-community-desc">{community.description}</p>
         <div className="cd-community-meta">
           <span><b>{memberCount}</b> Members</span>
-          <Link to={`/members/${id}`} className="cd-btn cd-btn-blue">View Members</Link>
+          <Link to={`/communities/${id}/members`} className="cd-btn cd-btn-blue">View Members</Link>
           {user && (isMember? <button onClick={handleLeave} className="cd-btn cd-btn-red">Leave</button> : <button onClick={handleJoin} className="cd-btn cd-btn-green">Join Community</button>)}
         </div>
       </div>
@@ -147,8 +146,8 @@ export default function CommunityDetails() {
       <div className="cd-posts-list">
         {posts.length === 0 && <p style={{textAlign:'center', color:'#666'}}>No posts yet. Be the first to post!</p>}
         {posts
-       .sort((a,b) => b.is_pinned - a.is_pinned || new Date(b.created_at) - new Date(a.created_at))
-       .map(post => { 
+     .sort((a,b) => b.is_pinned - a.is_pinned || new Date(b.created_at) - new Date(a.created_at))
+     .map(post => { 
           const isOwner = user?.id === post.user_id
           const hasLiked = user && Array.isArray(post.likes) && post.likes.some(l => l.user_id === user.id); 
           
@@ -191,7 +190,6 @@ export default function CommunityDetails() {
               )}
             </div>
 
-            {/* ACTIONS ROW WITH REPORT ADDED */}
             <div style={{display:'flex', gap:16, alignItems:'center', paddingTop:12, borderTop:'1px solid #f3f4f6', marginBottom:12, flexWrap:'wrap'}}>
               <button onClick={() => handleLike(post.id)} style={{display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', fontSize:14}}>
                 <span>{hasLiked? '❤️' : '🤍'}</span>

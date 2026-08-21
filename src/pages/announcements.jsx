@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from "../lib/supabaseClient"
+import { supabase } from "../lib/SupabaseClient"
 import '../App.css'
 import { MoreVertical, Trash2 } from 'lucide-react'
 

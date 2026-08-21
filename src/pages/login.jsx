@@ -1,30 +1,34 @@
 import { useState, useEffect } from 'react' 
-import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from "../lib/supabaseClient";
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { supabase } from "../lib/SupabaseClient";
 import communityImage from './images/community.png'
 import '../App.css'
 
 function Login() {
   const navigate = useNavigate()
+  const location = useLocation() // NEW
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true) // NEW
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
-  // FINAL FIXED VERSION
+  // FIXED: Only redirect if we are actually on /login
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession() // <- 2 CLOSING BRACES } }
-      if (session) {
-        navigate('/communities')
-      } else {
-        setCheckingAuth(false) // show login form
-      }
+  const checkSession = async () => {
+    console.log("Checking session...") // ADD THIS
+    const { data: { session }, error } = await supabase.auth.getSession() // ADD ERROR
+    console.log("Session:", session, "Error:", error) // ADD THIS
+    
+    if (session && location.pathname === '/login') { 
+      navigate('/communities', { replace: true })
+    } else {
+      setCheckingAuth(false)
     }
-    checkSession()
-  }, [navigate])
+  }
+  checkSession()
+}, [navigate, location])
 
   if (checkingAuth) return <div style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh'}}>Loading...</div>
 
@@ -62,7 +66,7 @@ function Login() {
 
     if (data.user) {
       alert('Login successful!')
-      navigate('/communities')
+      navigate('/communities', { replace: true })
     }
   }
 

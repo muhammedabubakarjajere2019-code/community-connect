@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from "../lib/supabaseClient"
+import { supabase } from "../lib/SupabaseClient"
 import '../App.css'
 import { MoreVertical, Trash2, Edit } from 'lucide-react'
 
@@ -14,11 +14,11 @@ function Communities() {
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      // FIX: STOP THE LOOP - REDIRECT TO LOGIN IF NOT LOGGED IN
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+
       if (!user) {
-        navigate('/login')
+        navigate('/login', { replace: true })
         return
       }
       
@@ -26,14 +26,14 @@ function Communities() {
       fetchCommunities()
     }
     init()
-  }, [navigate]) // Added navigate to dependency array
+  }, [navigate])
 
   async function fetchCommunities() {
     setLoading(true)
     const { data } = await supabase
-     .from('communities')
-     .select('*')
-     .order('created_at', { ascending: false })
+    .from('communities')
+    .select('*')
+    .order('created_at', { ascending: false })
     
     setCommunities(data || [])
     setLoading(false)
@@ -49,7 +49,7 @@ function Communities() {
   }
 
   const handleEditCommunity = (communityId) => {
-    navigate(`/edit-community/${communityId}`)
+    navigate(`/communities/${communityId}/edit`) // FIXED: was /edit-community/
   }
 
   const filteredCommunities = communities.filter((c) => {
@@ -93,8 +93,6 @@ function Communities() {
             const isCreator = currentUser?.id === community.created_by
             return (
             <article className="community-card" key={community.id} style={{position:'relative', paddingTop: 40}}>
-              
-              {/* ONLY SHOW MENU IF YOU CREATED IT */}
               {isCreator && (
                 <div style={{position:'absolute', right:12, top:12, zIndex:10}}>
                   <button 
@@ -103,33 +101,25 @@ function Communities() {
                   >
                     <MoreVertical size={18} />
                   </button>
-                  
                   {menuOpen === community.id && (
                     <div style={{position:'absolute', right:0, top:35, background:'#fff', border:'1px solid #e5e7eb', borderRadius:8, boxShadow:'0 4px 6px rgba(0,0,0,0.1)', zIndex:10, minWidth:130}}>
-                      <button 
-                        onClick={() => handleEditCommunity(community.id)}
-                        style={{display:'flex', gap:8, alignItems:'center', width:'100%', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', color:'#2563eb', textAlign:'left', fontWeight:600, borderBottom:'1px solid #f3f4f6'}}
-                      >
+                      <button onClick={() => handleEditCommunity(community.id)} style={{display:'flex', gap:8, alignItems:'center', width:'100%', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', color:'#2563eb', textAlign:'left', fontWeight:600, borderBottom:'1px solid #f3f4f6'}}>
                         <Edit size={16}/> Edit
                       </button>
-                      <button 
-                        onClick={() => handleDeleteCommunity(community.id)}
-                        style={{display:'flex', gap:8, alignItems:'center', width:'100%', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', color:'#ef4444', textAlign:'left', fontWeight:600}}
-                      >
+                      <button onClick={() => handleDeleteCommunity(community.id)} style={{display:'flex', gap:8, alignItems:'center', width:'100%', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', color:'#ef4444', textAlign:'left', fontWeight:600}}>
                         <Trash2 size={16}/> Delete
                       </button>
                     </div>
                   )}
                 </div>
               )}
-
               <div className="community-card-content">
                 <span className="community-type">{community.type || 'General'}</span>
                 <h2>{community.name}</h2>
                 <p>{community.description}</p>
                 <p style={{fontSize:12, color:'#666'}}>📍 {community.location}</p>
                 <div className="community-card-footer">
-                  <Link to={`/community/${community.id}`} className="view-community-btn">View Details</Link>
+                  <Link to={`/communities/${community.id}`} className="view-community-btn">View Details</Link> {/* FIXED: community -> communities */}
                   <Link to={`/create-event?community=${community.id}`} className="create-community-btn" style={{padding:'8px 16px'}}>+ Create Event</Link>
                 </div>
               </div>

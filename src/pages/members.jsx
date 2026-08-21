@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/SupabaseClient';
 
 export default function Members() {
   const { id } = useParams();
@@ -11,32 +11,38 @@ export default function Members() {
   const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
-    getUser()
-    fetchData();
+    init()
   }, [id]);
 
-  const getUser = async () => {
+  const init = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
+    fetchData(user)
   }
 
-  const fetchData = async () => {
+  const fetchData = async (currentUser) => {
     setLoading(true);
 
     const { data: commData } = await supabase
-     .from('communities')
-     .select('*')
-     .eq('id', id)
-     .single();
+  .from('communities')
+  .select('*')
+  .eq('id', id)
+  .single();
     setCommunity(commData);
 
-    const { data: memberData } = await supabase
-     .from('community_members')
-     .select('user_id, joined_at')
-     .eq('community_id', id);
+    const { data: memberData, error } = await supabase
+  .from('community_members')
+  .select('user_id, joined_at')
+  .eq('community_id', id);
 
-    if(user) {
-      const isAlreadyMember = memberData?.some(m => m.user_id === user.id)
+    if(error) {
+      console.log("Supabase error:", error)
+      setLoading(false)
+      return
+    }
+
+    if(currentUser) {
+      const isAlreadyMember = memberData?.some(m => m.user_id === currentUser.id)
       setIsMember(isAlreadyMember)
     }
 
@@ -48,14 +54,14 @@ export default function Members() {
 
     const userIds = memberData.map(m => m.user_id).filter(Boolean)
     const { data: profilesData } = await supabase
-     .from('profiles')
-     .select('id, username, full_name, avatar_url')
-     .in('id', userIds)
+  .from('profiles')
+  .select('id, username, full_name, avatar_url')
+  .in('id', userIds)
 
     const combined = memberData
-     .filter(m => m.user_id)
-     .map(m => ({
-       ...m,
+  .filter(m => m.user_id)
+  .map(m => ({
+     ...m,
         profiles: profilesData?.find(p => p.id === m.user_id)
       }))
 
@@ -65,15 +71,16 @@ export default function Members() {
 
   const handleJoin = async () => {
     if(!user) return alert("Login first")
-    await supabase.from('community_members').insert({ community_id: id, user_id: user.id })
+    const { error } = await supabase.from('community_members').insert({ community_id: id, user_id: user.id })
+    if(error) return alert(error.message)
     setIsMember(true)
-    fetchData()
+    fetchData(user)
   }
 
   const handleLeave = async () => {
     await supabase.from('community_members').delete().eq('community_id', id).eq('user_id', user.id)
     setIsMember(false)
-    fetchData()
+    fetchData(user)
   }
 
   if (loading) return <p style={{padding:20, textAlign:'center'}}>Loading members...</p>;
@@ -85,11 +92,11 @@ export default function Members() {
       <div style={{background:'#fff', padding:24, borderRadius:16, border:'1px solid #e5e7eb', marginTop:12, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12}}>
         <div>
           <h1 style={{margin:0, fontSize:28, fontWeight:800}}>{community?.name} Members</h1>
-          <p style={{margin:'4px 0 0 0', color:'#6b7280'}}><b>{members.length}</b> Total Members</p>
+          <p style={{margin:'4px 0 0', color:'#6b7280'}}><b>{members.length}</b> Total Members</p>
         </div>
         {user && (
           isMember 
-         ? <button onClick={handleLeave} style={{background:'#ef4444', color:'#fff', border:'none', padding:'10px 20px', borderRadius:10, fontWeight:600, cursor:'pointer'}}>Leave</button>
+       ? <button onClick={handleLeave} style={{background:'#ef4444', color:'#fff', border:'none', padding:'10px 20px', borderRadius:10, fontWeight:600, cursor:'pointer'}}>Leave</button>
           : <button onClick={handleJoin} style={{background:'#16a34a', color:'#fff', border:'none', padding:'10px 20px', borderRadius:10, fontWeight:600, cursor:'pointer'}}>Join Community</button>
         )}
       </div>
@@ -101,24 +108,33 @@ export default function Members() {
       ) : (
         <div style={{display:'grid', gap:12, marginTop:20}}>
           {members.map((m) => (
-            <div key={m.user_id} style={{background:'white', padding:16, borderRadius:12, border:'1px solid #e5e7eb', display:'flex', gap:12, alignItems:'center'}}>
-              <img
-                src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'U'}`}
-                alt="avatar"
-                style={{width:48, height:48, borderRadius:'50%', objectFit:'cover'}}
-              />
-              <div style={{flex:1}}>
-                <p style={{fontWeight:700, margin:0}}>
-                  {m.profiles?.full_name || m.profiles?.username || 'User'}
-                </p>
-                <p style={{fontSize:14, color:'#6b7280', margin:0}}>
-                  {m.profiles?.username? `@${m.profiles.username}` : ''}
-                </p>
-                <p style={{fontSize:12, color:'#9ca3af', margin:0}}>
-                  Joined {new Date(m.joined_at).toLocaleDateString()}
-                </p>
+            <Link 
+              key={m.user_id} 
+              to={`/communities/${id}/members/${m.user_id}`} // ADDED THIS
+              style={{textDecoration:'none', color:'inherit'}}
+            >
+              <div style={{background:'white', padding:16, borderRadius:12, border:'1px solid #e5e7eb', display:'flex', gap:12, alignItems:'center', cursor:'pointer', transition:'0.2s'}}
+                onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+              >
+                <img
+                  src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'U'}`}
+                  alt="avatar"
+                  style={{width:48, height:48, borderRadius:'50%', objectFit:'cover'}}
+                />
+                <div style={{flex:1}}>
+                  <p style={{fontWeight:700, margin:0}}>
+                    {m.profiles?.full_name || m.profiles?.username || 'User'}
+                  </p>
+                  <p style={{fontSize:14, color:'#6b7280', margin:0}}>
+                    {m.profiles?.username? `@${m.profiles.username}` : ''}
+                  </p>
+                  <p style={{fontSize:12, color:'#9ca3af', margin:0}}>
+                    Joined {new Date(m.joined_at).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
