@@ -1,4 +1,4 @@
-import { useState } from 'react' 
+import { useState, useEffect } from 'react' 
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from "../lib/supabaseClient";
 import communityImage from './images/community.png'
@@ -12,13 +12,24 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // NEW: Auto redirect if user is already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } = await supabase.auth.getSession()
+      if (session) {
+        navigate('/communities') // send them to dashboard if already logged in
+      }
+    }
+    checkSession()
+  }, [navigate])
+
   const handleForgotPassword = async () => {
     if (!email) {
       alert('Please enter your email first in the email field')
       return
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`, // <- CHANGED THIS LINE
+      redirectTo: `${window.location.origin}/reset-password`,
     })
     if (error) {
       alert('Error: ' + error.message)
@@ -122,7 +133,7 @@ function Login() {
             {error && <p style={{ color: '#d93025', marginTop: '10px', marginBottom: '10px' }}>{error}</p>}
 
             <button type="submit" className="primary-btn auth-submit" disabled={loading}>
-              {loading ? 'Signing In...' : 'Sign In →'}
+              {loading? 'Signing In...' : 'Sign In →'}
             </button>
           </form>
 
