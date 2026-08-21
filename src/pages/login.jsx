@@ -12,15 +12,13 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // REMOVED THE NUKE useEffect - it was logging you out every refresh
-
   const handleForgotPassword = async () => {
     if (!email) {
       alert('Please enter your email first in the email field')
       return
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'http://localhost:5173/reset-password',
+      redirectTo: `${window.location.origin}/reset-password`, // <- CHANGED THIS LINE
     })
     if (error) {
       alert('Error: ' + error.message)
