@@ -12,10 +12,10 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // NEW: Auto redirect if user is already logged in
+  // FIXED: Auto redirect if user is already logged in
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } = await supabase.auth.getSession()
+      const { data: { session } = await supabase.auth.getSession() // <- FIXED }
       if (session) {
         navigate('/communities') // send them to dashboard if already logged in
       }
