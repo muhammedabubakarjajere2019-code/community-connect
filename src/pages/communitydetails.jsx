@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import CreatePost from '../components/CreatePost'
-import CommentSection from '../components/CommentSection'
+import CreatePost from '../components/createpost'
+import CommentSection from '../components/commentsection'
 
 export default function CommunityDetails() {
   const { id } = useParams()
