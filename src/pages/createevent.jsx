@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import Logout from '../components/Logout'
 import '../App.css'
 
-function NewEvent() {
+function CreateEvent() {
   const { id: communityId } = useParams()
   const [searchParams] = useSearchParams()
   const communityFromQuery = searchParams.get('community')
@@ -17,7 +17,7 @@ function NewEvent() {
     description: '',
     location: '',
     date: '',
-    time: '', // CHANGED: was event_time
+    time: '',
     type: 'General'
   })
 
@@ -32,15 +32,14 @@ function NewEvent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return alert("Please login first")
 
-    // Combine date + time into 1 datetime for Supabase
-    const event_datetime = form.date && form.time? `${form.date}T${form.time}` : null
+    const event_datetime = form.date && form.time ? `${form.date}T${form.time}` : null
 
     const { error } = await supabase.from('events').insert([{
       title: form.title,
       description: form.description,
       location: form.location,
-      date: event_datetime, // save as 1 datetime
-      time: form.time, // also save time separately
+      date: event_datetime,
+      time: form.time,
       type: form.type,
       status: 'Upcoming',
       community_id: finalCommunityId,
@@ -53,7 +52,7 @@ function NewEvent() {
       console.log(error)
     } else {
       alert("Event created!")
-      navigate(`/community/${finalCommunityId}`)
+      navigate(`/communities/${finalCommunityId}`) // FIXED: added 's'
     }
   }
 
@@ -73,7 +72,7 @@ function NewEvent() {
       <main className="dashboard-main">
         <div className="auth-form-container" style={{ maxWidth: '600px', margin: '40px auto' }}>
           <div className="auth-form">
-            <Link to={`/community/${finalCommunityId}`} className="mobile-back">← Back to Community</Link>
+            <Link to={`/communities/${finalCommunityId}`} className="mobile-back">← Back to Community</Link>
             
             <div className="auth-message" style={{ textAlign: 'center' }}>
               <div className="auth-symbol">📅</div>
@@ -118,7 +117,7 @@ function NewEvent() {
               </div>
 
               <button type="submit" disabled={loading} className="primary-btn auth-submit">
-                {loading? 'Creating...' : 'Create Event →'}
+                {loading ? 'Creating...' : 'Create Event →'}
               </button>
             </form>
           </div>
@@ -127,4 +126,4 @@ function NewEvent() {
     </div>
   )
 }
-export default NewEvent
+export default CreateEvent

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
+import Logout from "../components/Logout";
+import "../App.css";
 
 export default function EditCommunity() {
   const { id } = useParams();
@@ -15,14 +17,19 @@ export default function EditCommunity() {
 
   useEffect(() => {
     const fetchCommunity = async () => {
-      try {
-        const res = await axios.get(`https://your-api-url.com/api/communities/${id}`);
-        setFormData(res.data);
-        setLoading(false);
-      } catch (err) {
-        console.error(err);
-        setLoading(false);
+      const { data, error } = await supabase
+        .from("communities")
+        .select("*")
+        .eq("id", id)
+        .single();
+      
+      if (error) {
+        alert("Error loading community");
+        console.log(error);
+      } else {
+        setFormData(data);
       }
+      setLoading(false);
     };
     fetchCommunity();
   }, [id]);
@@ -34,64 +41,70 @@ export default function EditCommunity() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    try {
-      await axios.put(`https://your-api-url.com/api/communities/${id}`, formData);
+    const { error } = await supabase
+      .from("communities")
+      .update(formData)
+      .eq("id", id);
+
+    setSaving(false);
+    if (error) {
+      alert("Failed to update community: " + error.message);
+      console.log(error);
+    } else {
       alert("Community updated successfully!");
-      navigate("/communities");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update community");
-      setSaving(false);
+      navigate(`/communities/${id}`);
     }
   };
 
   if (loading) return <div className="p-4">Loading...</div>;
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Edit Community</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block mb-1">Community Name</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-            required
-          />
+    <div className="dashboard">
+      <aside className="dashboard-sidebar">
+        <Link to="/" className="dashboard-logo"><div className="brand-icon">C</div><span>Community Connect</span></Link>
+        <nav className="dashboard-nav">
+          <Link to="/dashboard"><span>🏠</span>Dashboard</Link>
+          <Link to="/communities" className="active"><span>🏘️</span>Communities</Link>
+          <Link to="/members"><span>👥</span>Members</Link>
+          <Link to="/events"><span>📅</span>Events</Link>
+        </nav>
+        <div className="dashboard-bottom"><Link to="/profile"><span>👤</span>Profile</Link><Logout /></div>
+      </aside>
+
+      <main className="dashboard-main">
+        <div className="auth-form-container" style={{ maxWidth: '600px', margin: '40px auto' }}>
+          <div className="auth-form">
+            <Link to={`/communities/${id}`} className="mobile-back">← Back to Community</Link>
+            
+            <div className="auth-message" style={{ textAlign: 'center' }}>
+              <div className="auth-symbol">🏘️</div>
+              <h1>Edit Community</h1>
+              <p>Update your community details.</p>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Community Name</label>
+                <input type="text" name="name" value={formData.name} onChange={handleChange} required />
+              </div>
+
+              <div className="form-group">
+                <label>Description</label>
+                <textarea name="description" value={formData.description} onChange={handleChange} rows="4" required />
+              </div>
+
+              <div className="form-group">
+                <label>Location</label>
+                <input type="text" name="location" value={formData.location} onChange={handleChange} required />
+              </div>
+
+              <button type="submit" disabled={saving} className="primary-btn auth-submit">
+                {saving ? "Saving..." : "Save Changes →"}
+              </button>
+            </form>
+          </div>
         </div>
-        <div>
-          <label className="block mb-1">Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-            rows="4"
-            required
-          />
-        </div>
-        <div>
-          <label className="block mb-1">Location</label>
-          <input
-            type="text"
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
-      </form>
+      </main>
     </div>
   );
 }
